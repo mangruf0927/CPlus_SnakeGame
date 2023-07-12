@@ -21,6 +21,7 @@ void DrawBorder(HDC hdc, RECT rectView);
 void Snake(HDC hdc, int* x, int* y, int length);
 void FoodPlace(HWND hWnd, RECT rect, int* fx, int* fy);
 void FoodDraw(HDC hdc, int* fx, int* fy);
+void StartSetting(HWND hWnd);
 
 
 // >> : WinAPI 사용하면서 콘솔창 동시에 띄우기
@@ -163,6 +164,23 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 #define EXIT 1	
 
 const int circleRadius = 10; //뱀 동그라미 반지름 
+static POINT ptCurPos;
+
+static int flag = 1;
+static int hkey, ckey = 0; // 방향키 저장
+static int progress = 1; // 진행 상태  
+static int score = 0; // 점수 
+
+// 뱀의 시작 위치
+static int xSnake[80] = { 70, 50 };
+static int ySnake[80] = { 90, 90 };
+
+// 뱀의 시작 길이
+static int length = 1;
+
+// 먹이 위치
+static int xfood = 170;
+static int yfood = 290;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -170,27 +188,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	PAINTSTRUCT ps;
 	HPEN hPen, oldPen;
 	HBRUSH hBrush, oldBrush;
-
-	static POINT ptCurPos;
 	static RECT rectView;
-
-	static int flag = 1;
-	static int hkey, ckey = 0; // 방향키 저장
-	static int progress = 1; // 진행 상태  
-	static int score = 0; // 점수 
-	static int menu; // 메뉴
 	TCHAR str[128]; // 점수 출력 
+	static int menu; // 메뉴
 
-	// 뱀의 시작 위치
-	static int xSnake[100] = { 70, 50 };
-	static int ySnake[100] = { 90, 90 };
-
-	// 뱀의 시작 길이
-	static int length = 1;
-
-	// 먹이 위치
-	static int xfood = 170;
-	static int yfood = 290;
 
 
 	switch (message)
@@ -198,10 +199,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_CREATE:
 	{
 		GetClientRect(hWnd, &rectView);
-
-		srand(time(NULL));
-		SetTimer(hWnd, timer_ID_1, 95, NULL); // 뱀 이동 속도 
-
+		StartSetting(hWnd);
 	}
 	break;
 
@@ -210,8 +208,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch (wParam)
 		{
 			hdc = GetDC(hWnd);
-			FoodPlace(hWnd, rectView, &xfood, &yfood); //먹이 재생성
-
+			FoodPlace(hWnd, rectView, &xfood, &yfood); //먹이 생성
 			ReleaseDC(hWnd, hdc);
 
 		case timer_ID_1:
@@ -265,7 +262,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				flag = 0;
 				KillTimer(hWnd, timer_ID_1);
 				KillTimer(hWnd, timer_ID_2);
-				MessageBox(hWnd, _T("벽 충돌"), _T("GAME OVER"), MB_OK);
+				MessageBox(hWnd, _T("게임 오버"), _T("GAME OVER"), MB_OK);
 				progress = GameOver;
 				break;
 				//DestroyWindow(hWnd);
@@ -288,7 +285,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					flag = 0;
 					KillTimer(hWnd, timer_ID_1);
-					MessageBox(hWnd, _T("몸 충돌"), _T("GAME OVER"), MB_OK);
+					MessageBox(hWnd, _T("게임 오버"), _T("GAME OVER"), MB_OK);
 					progress = GameOver;
 					break;
 					//DestroyWindow(hWnd);
@@ -376,11 +373,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (wParam == VK_RETURN)
 			{
-				DestroyWindow(hWnd);
+				switch (menu)
+				{
+				case REGAME:
+					StartSetting(hWnd);
+					InvalidateRgn(hWnd, NULL, TRUE);
+					break;
+				case EXIT:
+					DestroyWindow(hWnd);
+					break;
+				}
 			}
+			else if (wParam == VK_UP && menu == EXIT)
+				menu = REGAME;
+			else if (wParam == VK_DOWN && menu == REGAME)
+				menu = EXIT;
 		}
+			InvalidateRect(hWnd, NULL, TRUE);
 			break;
-		InvalidateRect(hWnd, NULL, TRUE);
 		}
 		break;
 	case WM_PAINT:
@@ -422,6 +432,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			TextOut(hdc, 200, 210, _T("GAME OVER"), _tcslen(_T("GAME OVER")));
 			wsprintf(str, _T("최종점수 : %d"), score);
 			TextOut(hdc, 196, 230, str, _tcslen(str));
+		
+			TextOut(hdc, 200, 270, _T("다시 하기"), _tcslen(_T("다시 하기")));
+			TextOut(hdc, 200, 290, _T("종료"), _tcslen(_T("종료")));
+			
+			switch (menu)
+			{
+			case REGAME:
+				TextOut(hdc, 150, 270, _T("▶"), _tcslen(_T("▶")));
+				break;
+			case EXIT :
+				TextOut(hdc, 150, 290, _T("▶"), _tcslen(_T("▶")));
+				break;
+			}
+			
 		}
 		break;
 		}
@@ -562,4 +586,35 @@ void FoodDraw(HDC hdc, int* xfood, int* yfood)
 	SelectObject(hdc, CreatePen(PS_SOLID, 1, RGB(255, 102, 102)));
 	POINT point = { *xfood, *yfood };
 	DrawStar(hdc, point, 11);
+}
+
+void StartSetting(HWND hWnd)
+{
+	flag = 1;
+	hkey = 0, ckey = 0; // 방향키 저장
+	progress = 1; // 진행 상태  
+	score = 0; // 점수 
+
+	xSnake[0] = 70;
+	xSnake[1] = 50;
+	ySnake[0] = 90;
+	ySnake[1] = 90;
+
+	// 뱀의 시작 위치
+	for (int i = 2; i < 80; i++)
+	{
+		xSnake[i] = 0;
+		ySnake[i] = 0;
+	}
+
+	// 뱀의 시작 길이
+	length = 1;
+
+	// 먹이 위치
+	xfood = 170;
+	yfood = 290;
+
+
+	srand(time(NULL));
+	SetTimer(hWnd, timer_ID_1, 95, NULL); // 뱀 이동 속도 
 }
